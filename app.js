@@ -1,6 +1,8 @@
 // app.js (ES module)
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { KEYWORD_MAP, MUSCLE_GROUPS } from './data.js';
+setLocalOpenAIKey('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');
+
 
 /* ========== CONFIG - set these after creating Supabase project ========== */
 const SUPABASE_URL = 'https://zbzjdkauormqdfrxxdrn.supabase.co';     // << replace
