@@ -1,0 +1,487 @@
+<!-- index.html - drop in repo and host on GitHub Pages -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>iron-rank — workout leaderboard</title>
+<link rel="apple-touch-icon" href="data:," />
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#0f1316; --muted:#9aa3a6; --accent:#3ddc84;
+    --card:#0e1113; --glass: rgba(255,255,255,0.03);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:linear-gradient(180deg,#050607 0%,var(--bg) 100%);
+    color:#e6eef0; -webkit-font-smoothing:antialiased;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:20px;
+  }
+  .app{width:100%; max-width:980px;}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#0f2230,#142a22);display:flex;align-items:center;justify-content:center;font-weight:700}
+  h1{margin:0;font-size:18px}
+  .cols{display:grid;grid-template-columns:360px 1fr;gap:16px}
+  .card{background:linear-gradient(180deg,var(--card),#071014);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.03)}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  input[type="text"], input[type="number"], select, textarea{
+    width:100%; padding:8px 10px; border-radius:8px; background:var(--glass); border:1px solid rgba(255,255,255,0.03);
+    color:inherit; font-size:14px;
+  }
+  button{background:var(--accent); border:0;padding:8px 12px;border-radius:10px;color:#022;cursor:pointer;font-weight:600}
+  .muted{color:var(--muted);font-size:13px}
+  .small{font-size:12px;color:var(--muted)}
+  .users{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .user-pill{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.02);cursor:pointer}
+  .list{margin-top:10px;display:grid;gap:8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .exercise-list{max-height:250px;overflow:auto;padding-right:6px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:13px}
+  .leader{display:flex;gap:12px;align-items:center}
+  .score{font-weight:700;color:var(--accent)}
+  .muscle-tag{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+  .settings{display:flex;flex-direction:column;gap:8px}
+  footer{margin-top:12px;color:var(--muted);font-size:13px}
+  .flex{display:flex;gap:8px;align-items:center}
+  .danger{background:#ff3b3b;color:#120000}
+  .tiny{font-size:11px;color:var(--muted)}
+  .checkbox{display:flex;align-items:center;gap:6px}
+  .pill{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:8px}
+  @media (max-width:800px){.cols{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">ir</div>
+      <div>
+        <h1>iron-rank</h1>
+        <div class="muted tiny">add to home screen on iphone — tracks workouts & ranks friends</div>
+      </div>
+    </header>
+
+    <div class="cols">
+      <!-- left: input + users + settings -->
+      <div class="card">
+        <div class="users">
+          <select id="userSelect"></select>
+          <input id="newUserName" placeholder="new friend name" />
+          <button id="addUserBtn">add</button>
+        </div>
+
+        <hr style="border:none;height:8px;background:transparent"/>
+
+        <div>
+          <label>exercise name</label>
+          <input id="exerciseName" placeholder="e.g. bench press, goblet squat, tiger curl" />
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1">
+            <label>sets</label>
+            <input id="sets" type="number" value="3" min="1" />
+          </div>
+          <div style="width:120px">
+            <label>reps (per set)</label>
+            <input id="reps" type="number" value="8" min="1" />
+          </div>
+          <div style="width:120px">
+            <label>weight (optional)</label>
+            <input id="weight" type="number" placeholder="kg or lb" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <div class="checkbox"><input type="checkbox" id="toFailure" /><label for="toFailure" class="small">did at least one set to failure</label></div>
+          <div style="flex:1"></div>
+          <button id="logBtn">log workout</button>
+        </div>
+
+        <div class="list">
+          <div class="small" style="margin-top:8px">recent logs</div>
+          <div id="recentLogs" class="exercise-list"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="clearLogs" class="danger">clear all logs</button>
+            <button id="exportBtn" class="pill">export json</button>
+            <button id="importBtn" class="pill">import json</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" />
+          </div>
+        </div>
+
+        <hr style="margin-top:12px;border:none;height:6px;background:transparent"/>
+
+        <div class="settings">
+          <div class="small">settings</div>
+          <label class="tiny">openai api key (optional — used only for classifying weird exercises)</label>
+          <input id="openaiKey" placeholder="paste sk-..." />
+          <div class="tiny muted">the key is stored only in your browser localStorage</div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <button id="saveSettings" class="pill">save settings</button>
+            <button id="resetSettings" class="pill">reset</button>
+          </div>
+        </div>
+
+        <footer>
+          <div class="tiny muted">ranking = sum over logs of (sets × reps × (weight || 1)) + (to-failure ? +20 per-log). per-muscle scores aggregate logs whose primary muscle matches.</div>
+        </footer>
+      </div>
+
+      <!-- right: leaderboard + muscle filters -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="muted tiny">leaderboard</div>
+            <h2 style="margin:0">overall ranking</h2>
+          </div>
+          <div>
+            <label class="tiny muted">filter muscle</label>
+            <select id="muscleFilter">
+              <option value="all">all (overall)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="leaderboardSection" style="margin-top:12px">
+          <table>
+            <thead><tr><th>rank</th><th>name</th><th>score</th><th>top muscles</th></tr></thead>
+            <tbody id="leaderboard"></tbody>
+          </table>
+        </div>
+
+        <hr style="margin:12px 0;border:none;height:6px;background:transparent"/>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="muted tiny">muscle breakdown</div>
+            <div class="small">click a name to view that user's logs</div>
+          </div>
+          <div id="muscleTable" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* --- data models in localStorage ---
+   keys: iron_users (array of names)
+         iron_logs (array of {user, exercise, sets, reps, weight, toFailure, muscle, ts})
+         iron_settings {openaiKey}
+*/
+
+const STORAGE_USERS = 'iron_users_v1';
+const STORAGE_LOGS = 'iron_logs_v1';
+const STORAGE_SETTINGS = 'iron_settings_v1';
+
+/* --- muscle mapping (simple fallback keywords) ---
+   primary groups: chest, back, legs, shoulders, arms, core, glutes, calves, traps
+*/
+const MUSCLE_GROUPS = ["chest","back","legs","shoulders","arms","core","glutes","calves","traps","cardio","full-body","other"];
+const KEYWORD_MAP = {
+  chest: ["bench","press","pec","pushup","push-up","dumbbell chest","incline","decline","fly","pec deck"],
+  back: ["row","deadlift","pull","chin","lat","lat pulldown","pullup","pull-up","t bar"],
+  legs: ["squat","leg press","lunge","split squat","step-up","thigh"],
+  shoulders: ["shoulder","overhead press","arnold","lateral raise","front raise","rear delt","deltoid"],
+  arms: ["curl","tricep","triceps","bicep","barbell curl","hammer curl","skullcrusher","dip"],
+  core: ["plank","situp","crunch","rollout","ab","abdominal","hollow"],
+  glutes: ["hip thrust","glute","glute bridge","kickback","clamshell"],
+  calves: ["calf","standing calf","seated calf"],
+  traps: ["shrug","trap"],
+  cardio: ["run","bike","rower","rowing","bike"],
+  "full-body": ["burpee","kettlebell swing","clean","snatch","thruster"]
+};
+
+/* --- helpers --- */
+function save(key, val){localStorage.setItem(key, JSON.stringify(val))}
+function load(key, def){try{return JSON.parse(localStorage.getItem(key))||def}catch(e){return def}}
+function uid(){return Math.random().toString(36).slice(2,9)}
+function nowTs(){return (new Date()).toISOString()}
+
+/* --- classification: try keyword map first, then optionally call openai via browser fetch --- */
+async function classifyExercise(name){
+  const n = name.toLowerCase();
+  // keywords
+  for(const [muscle, kws] of Object.entries(KEYWORD_MAP)){
+    for(const kw of kws){
+      if(n.includes(kw)) return muscle;
+    }
+  }
+  // fuzzy fallback: check words
+  const words = n.split(/[^a-z0-9]+/);
+  for(const w of words){
+    for(const [muscle, kws] of Object.entries(KEYWORD_MAP)){
+      if(kws.includes(w)) return muscle;
+    }
+  }
+  // if user provided openai key, call it
+  const settings = load(STORAGE_SETTINGS, {});
+  if(settings.openaiKey){
+    try{
+      const prompt = `classify the primary muscle group targeted by this exercise name into one of: ${MUSCLE_GROUPS.join(", ")}. respond with only the muscle group (one word or hyphenated). exercise name: "${name}"`;
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":"Bearer " + settings.openaiKey
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini", // flexible; user can change
+          messages:[{role:"user", content:prompt}],
+          max_tokens:20,
+          temperature:0
+        })
+      });
+      if(!res.ok) throw new Error('openai error');
+      const data = await res.json();
+      const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "";
+      const muscle = reply.trim().toLowerCase().replace(/[^a-z\-]/g,'');
+      if(MUSCLE_GROUPS.includes(muscle)) return muscle;
+    }catch(e){
+      console.warn("openai classify failed", e);
+    }
+  }
+  return "other";
+}
+
+/* --- scoring formula ---
+   per log:
+     base = sets * reps * (weight || 1)
+     failure_bonus = toFailure ? 20 : 0
+   sum across logs
+*/
+function scoreForLogs(logs){
+  return logs.reduce((s, l) => {
+    const base = (l.sets || 0) * (l.reps || 0) * (l.weight || 1);
+    return s + base + (l.toFailure ? 20 : 0);
+  }, 0);
+}
+
+function aggregateByMuscle(logs){
+  const map = {};
+  logs.forEach(l=>{
+    const m = l.muscle || "other";
+    map[m] = map[m] || [];
+    map[m].push(l);
+  });
+  return map;
+}
+
+/* --- DOM & app logic --- */
+const userSelect = document.getElementById('userSelect');
+const addUserBtn = document.getElementById('addUserBtn');
+const newUserName = document.getElementById('newUserName');
+const logBtn = document.getElementById('logBtn');
+const exerciseNameIn = document.getElementById('exerciseName');
+const setsIn = document.getElementById('sets');
+const repsIn = document.getElementById('reps');
+const weightIn = document.getElementById('weight');
+const toFailureIn = document.getElementById('toFailure');
+const recentLogsEl = document.getElementById('recentLogs');
+const leaderboardEl = document.getElementById('leaderboard');
+const muscleFilter = document.getElementById('muscleFilter');
+const muscleTable = document.getElementById('muscleTable');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
+const clearLogs = document.getElementById('clearLogs');
+const openaiKeyIn = document.getElementById('openaiKey');
+const saveSettings = document.getElementById('saveSettings');
+const resetSettings = document.getElementById('resetSettings');
+
+function loadUsers(){ return load(STORAGE_USERS, [])}
+function saveUsers(u){ save(STORAGE_USERS, u) }
+function loadLogs(){ return load(STORAGE_LOGS, [])}
+function saveLogs(l){ save(STORAGE_LOGS, l) }
+function loadSettings(){ return load(STORAGE_SETTINGS, {})}
+function saveSettingsObj(s){ save(STORAGE_SETTINGS, s) }
+
+function refreshUsers(){
+  const users = loadUsers();
+  userSelect.innerHTML = '';
+  users.forEach(u=>{
+    const o = document.createElement('option');
+    o.value = u; o.textContent = u;
+    userSelect.appendChild(o);
+  });
+  if(users.length===0){
+    userSelect.innerHTML = '<option value="">(no users)</option>';
+  }
+}
+
+function renderRecentLogs(){
+  const logs = loadLogs().slice().reverse().slice(0,12);
+  recentLogsEl.innerHTML = '';
+  logs.forEach(l=>{
+    const d = document.createElement('div');
+    d.className='row';
+    d.innerHTML = `<div>
+        <div style="font-weight:600">${l.exercise}</div>
+        <div class="tiny muted">${l.sets}x${l.reps}${l.weight?(' @'+l.weight):''} ${l.toFailure? '• failure':''} • ${new Date(l.ts).toLocaleString()}</div>
+      </div>
+      <div class="small score">${Math.round((l.sets*l.reps*(l.weight||1)) + (l.toFailure?20:0))}</div>`;
+    recentLogsEl.appendChild(d);
+  });
+}
+
+function rebuildMuscleFilter(){
+  muscleFilter.innerHTML = '<option value="all">all (overall)</option>';
+  MUSCLE_GROUPS.forEach(m=>{
+    const o=document.createElement('option'); o.value=m; o.textContent=m; muscleFilter.appendChild(o);
+  });
+}
+
+async function rebuildLeaderboard(){
+  const logs = loadLogs();
+  const users = loadUsers();
+  const rows = users.map(u=>{
+    const ul = logs.filter(x=>x.user===u);
+    const total = scoreForLogs(ul);
+    // top muscles
+    const byMus = aggregateByMuscle(ul);
+    const topMus = Object.entries(byMus).map(([k,arr])=>({k,score:scoreForLogs(arr)}))
+                      .sort((a,b)=>b.score-a.score).slice(0,3).map(x=>x.k);
+    return {user:u,score:total,topMuscles:topMus};
+  }).sort((a,b)=>b.score-a.score);
+
+  const filter = muscleFilter.value;
+  leaderboardEl.innerHTML = '';
+  let rank=0;
+  rows.forEach((r,i)=>{
+    if(filter!=='all'){
+      // show only users with any score in muscle
+      const logsForMus = loadLogs().filter(x=>x.user===r.user && x.muscle===filter);
+      if(logsForMus.length===0) return;
+    }
+    rank++;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${rank}</td>
+      <td><a href="#" class="user-link" data-user="${r.user}">${r.user}</a></td>
+      <td class="score">${Math.round(r.score)}</td>
+      <td>${r.topMuscles.map(m=>`<span class="muscle-tag">${m}</span>`).join(' ')}</td>`;
+    leaderboardEl.appendChild(tr);
+  });
+
+  // attach user click handlers
+  document.querySelectorAll('.user-link').forEach(a=>{
+    a.addEventListener('click', (e)=>{ e.preventDefault(); showUserLogs(a.dataset.user) });
+  });
+}
+
+function showUserLogs(user){
+  const logs = loadLogs().filter(l=>l.user===user).sort((a,b)=>b.ts.localeCompare(a.ts));
+  muscleTable.innerHTML = `<div style="margin-bottom:8px"><strong>${user}</strong> — recent ${logs.length} logs</div>`;
+  if(logs.length===0){ muscleTable.innerHTML += '<div class="muted tiny">no logs</div>'; return; }
+  const tbl = document.createElement('table');
+  tbl.innerHTML = `<thead><tr><th>when</th><th>exercise</th><th>sets×reps</th><th>muscle</th><th>score</th></tr></thead>`;
+  const tb = document.createElement('tbody');
+  logs.forEach(l=>{
+    const sc = Math.round((l.sets*l.reps*(l.weight||1)) + (l.toFailure?20:0));
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="tiny muted">${new Date(l.ts).toLocaleString()}</td>
+      <td>${l.exercise}</td>
+      <td>${l.sets}×${l.reps}${l.weight?('@'+l.weight):''}</td>
+      <td><span class="muscle-tag">${l.muscle||'other'}</span></td>
+      <td class="score">${sc}</td>`;
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  muscleTable.appendChild(tbl);
+}
+
+/* --- events --- */
+addUserBtn.addEventListener('click', ()=>{
+  const name = (newUserName.value||'').trim();
+  if(!name) return alert('enter a name');
+  const users = loadUsers();
+  if(users.includes(name)) return alert('name already exists');
+  users.push(name);
+  saveUsers(users);
+  newUserName.value='';
+  refreshUsers(); rebuildLeaderboard(); renderRecentLogs();
+});
+
+logBtn.addEventListener('click', async ()=>{
+  const user = userSelect.value;
+  if(!user){ alert('select a user (or add one)'); return; }
+  const exercise = (exerciseNameIn.value||'').trim();
+  if(!exercise){ alert('enter exercise name'); return; }
+  const sets = parseInt(setsIn.value)||0;
+  const reps = parseInt(repsIn.value)||0;
+  const weight = weightIn.value?parseFloat(weightIn.value):null;
+  const toFailure = toFailureIn.checked;
+  const muscle = await classifyExercise(exercise);
+  const logs = loadLogs();
+  logs.push({id:uid(), user, exercise, sets, reps, weight, toFailure, muscle, ts:nowTs()});
+  saveLogs(logs);
+  // clear form
+  exerciseNameIn.value=''; setsIn.value='3'; repsIn.value='8'; weightIn.value=''; toFailureIn.checked=false;
+  renderRecentLogs(); rebuildLeaderboard();
+});
+
+clearLogs.addEventListener('click', ()=>{
+  if(!confirm('clear all logs? this cannot be undone')) return;
+  saveLogs([]); renderRecentLogs(); rebuildLeaderboard();
+});
+
+exportBtn.addEventListener('click', ()=>{
+  const data = {users: loadUsers(), logs: loadLogs(), settings: loadSettings()};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='iron-rank-export.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+importBtn.addEventListener('click', ()=> importFile.click());
+importFile.addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const obj = JSON.parse(ev.target.result);
+      if(obj.users) saveUsers(obj.users);
+      if(obj.logs) saveLogs(obj.logs);
+      if(obj.settings) saveSettingsObj(obj.settings);
+      alert('imported');
+      loadApp();
+    }catch(err){ alert('invalid file') }
+  };
+  reader.readAsText(f);
+});
+
+saveSettings.addEventListener('click', ()=>{
+  const k = openaiKeyIn.value.trim();
+  saveSettingsObj({openaiKey: k});
+  alert('saved');
+});
+
+resetSettings.addEventListener('click', ()=>{
+  if(confirm('reset settings?')){ saveSettingsObj({}); openaiKeyIn.value=''; alert('reset') }
+});
+
+muscleFilter.addEventListener('change', rebuildLeaderboard);
+
+/* --- initial load --- */
+function loadApp(){
+  if(!localStorage.getItem(STORAGE_USERS)){
+    // seed with sample user
+    saveUsers(['phineas']);
+  }
+  if(!localStorage.getItem(STORAGE_LOGS)){
+    saveLogs([]);
+  }
+  const settings = loadSettings();
+  openaiKeyIn.value = settings.openaiKey || '';
+  refreshUsers();
+  renderRecentLogs();
+  rebuildMuscleFilter();
+  rebuildLeaderboard();
+}
+loadApp();
+
+</script>
+</body>
+</html>
