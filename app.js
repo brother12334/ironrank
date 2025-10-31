@@ -13,6 +13,7 @@ const CLASSIFY_ENDPOINT = null; // optional: you can set to server classifier; l
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // helper: convert phone to pseudo-email for password auth
+// helper: convert phone to pseudo-email for password auth
 function phoneToEmail(phone){
   // remove everything except digits
   const cleaned = (phone||'').replace(/[^\d]/g,''); 
@@ -21,6 +22,44 @@ function phoneToEmail(phone){
 }
 
 
+
+document.getElementById('btnSignUp').onclick = async ()=>{
+  const phone = document.getElementById('phoneIn').value.trim();
+  const pw = document.getElementById('pwIn').value;
+  if(!phone || !pw) return alert('enter phone and password');
+  const email = phoneToEmail(phone);
+  const { data, error } = await supabase.auth.signUp({ email, password: pw });
+  if(error){ alert('signup error: ' + error.message); return; }
+  // after signUp, prompt for display name
+  const name = prompt('display name to show on leaderboard?') || phone;
+  const userId = data?.user?.id;
+  if(userId){
+    await supabase.from('profiles').upsert({ id: userId, phone, display_name: name });
+    alert('signed up! logged in.');
+    renderLogPage();
+  } else {
+    alert('sign up complete. sign in to continue.');
+  }
+};
+
+document.getElementById('btnSignIn').onclick = async ()=>{
+  const phone = document.getElementById('phoneIn').value.trim();
+  const pw = document.getElementById('pwIn').value;
+  if(!phone || !pw) return alert('enter phone and password');
+  const email = phoneToEmail(phone);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw });
+  if(error){ alert('sign in error: ' + error.message); return; }
+  // ensure profile exists
+  const userId = data.user?.id;
+  if(userId){
+    const { data:profile } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if(!profile){
+      const name = prompt('display name to show on leaderboard?') || phone;
+      await supabase.from('profiles').upsert({ id: userId, phone, display_name: name });
+    }
+  }
+  renderLogPage();
+};
 
 
 /* --- local OpenAI key handling (stored locally per device) --- */
@@ -138,50 +177,54 @@ async function renderLogPage(){
 
   if(!session || !session.user){
     // show sign-up / sign-in form (phone + password)
-    authArea.innerHTML = `
-      <label>phone number</label><input id="phoneIn" placeholder="+15551234567" />
-      <label>password</label><input id="pwIn" type="password" />
-      <div style="display:flex;gap:8px"><button id="btnSignUp">Sign up</button><button id="btnSignIn" class="pill">Sign in</button></div>
-      <div style="margin-top:8px" class="small">phone+password uses a pseudo-email behind the scenes.</div>
-    `;
-    document.getElementById('btnSignUp').onclick = async ()=>{
-      const phone = document.getElementById('phoneIn').value.trim();
-      const pw = document.getElementById('pwIn').value;
-      if(!phone || !pw) return alert('enter phone and password');
-      const email = phoneToEmail(phone);
-      const { data, error } = await supabase.auth.signUp({ email, password: pw });
-      if(error){ alert('signup error: ' + error.message); return; }
-      // after signUp, prompt for display name
+ // inside renderLogPage(), auth area for sign-up / sign-in
+authArea.innerHTML = `
+  <label>phone number</label><input id="phoneIn" placeholder="+15551234567" />
+  <label>password</label><input id="pwIn" type="password" />
+  <div style="display:flex;gap:8px">
+    <button id="btnSignUp">Sign up</button>
+    <button id="btnSignIn" class="pill">Sign in</button>
+  </div>
+  <div style="margin-top:8px" class="small">phone+password uses a pseudo-email behind the scenes.</div>
+`;
+
+document.getElementById('btnSignUp').onclick = async ()=>{
+  const phone = document.getElementById('phoneIn').value.trim();
+  const pw = document.getElementById('pwIn').value;
+  if(!phone || !pw) return alert('enter phone and password');
+  const email = phoneToEmail(phone);
+  const { data, error } = await supabase.auth.signUp({ email, password: pw });
+  if(error){ alert('signup error: ' + error.message); return; }
+  // after signUp, prompt for display name
+  const name = prompt('display name to show on leaderboard?') || phone;
+  const userId = data?.user?.id;
+  if(userId){
+    await supabase.from('profiles').upsert({ id: userId, phone, display_name: name });
+    alert('signed up! logged in.');
+    renderLogPage();
+  } else {
+    alert('sign up complete. sign in to continue.');
+  }
+};
+
+document.getElementById('btnSignIn').onclick = async ()=>{
+  const phone = document.getElementById('phoneIn').value.trim();
+  const pw = document.getElementById('pwIn').value;
+  if(!phone || !pw) return alert('enter phone and password');
+  const email = phoneToEmail(phone);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw });
+  if(error){ alert('sign in error: ' + error.message); return; }
+  // ensure profile exists
+  const userId = data.user?.id;
+  if(userId){
+    const { data:profile } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if(!profile){
       const name = prompt('display name to show on leaderboard?') || phone;
-      // upsert profile once session available (supabase may require confirmation flow depending on settings)
-      // try to get user id from returned data, else fetch session after a moment
-      const userId = data?.user?.id;
-      if(userId){
-        await supabase.from('profiles').upsert({ id: userId, phone, display_name: name });
-        alert('signed up! logged in.');
-        renderLogPage();
-      } else {
-        alert('sign up complete. sign in to continue.');
-      }
-    };
-    document.getElementById('btnSignIn').onclick = async ()=>{
-      const phone = document.getElementById('phoneIn').value.trim();
-      const pw = document.getElementById('pwIn').value;
-      if(!phone || !pw) return alert('enter phone and password');
-      const email = phoneToEmail(phone);
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw });
-      if(error){ alert('sign in error: ' + error.message); return; }
-      // ensure profile exists
-      const userId = data.user?.id;
-      if(userId){
-        const { data:profile } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-        if(!profile){
-          const name = prompt('display name to show on leaderboard?') || phone;
-          await supabase.from('profiles').upsert({ id: userId, phone, display_name: name });
-        }
-      }
-      renderLogPage();
-    };
+      await supabase.from('profiles').upsert({ id: userId, phone, display_name: name });
+    }
+  }
+  renderLogPage();
+};
   } else {
     // show display name & logout
     document.getElementById('displayName').textContent = profile?.display_name || session.user.user_metadata?.full_name || session.user.email || 'user';
