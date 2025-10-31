@@ -14,11 +14,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // helper: convert phone to pseudo-email for password auth
 function phoneToEmail(phone){
-  // keep only digits
+  // remove everything except digits
   const cleaned = (phone||'').replace(/[^\d]/g,''); 
-  // add prefix to make it look like a valid email
+  // prefix with 'u' to make a valid email
   return `u${cleaned}@phone.ironrank`;
 }
+
 
 
 
