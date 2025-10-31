@@ -14,10 +14,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // helper: convert phone to pseudo-email for password auth
 function phoneToEmail(phone){
-  // normalize phone: keep digits & plus
-  const cleaned = (phone||'').replace(/[^\d+]/g,'');
-  return `${cleaned}@phone.ironrank`;
+  const cleaned = (phone||'').replace(/[^\d]/g,''); // keep only digits
+  return `u${cleaned}@phone.ironrank`; // add "u" prefix
 }
+
 
 /* --- local OpenAI key handling (stored locally per device) --- */
 function getLocalOpenAIKey(){ return localStorage.getItem('ir_openai_key') || '' }
